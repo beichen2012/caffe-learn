@@ -168,7 +168,8 @@ class Caffe {
   inline static void set_solver_rank(int val) { Get().solver_rank_ = val; }
   inline static bool multiprocess() { return Get().multiprocess_; }
   inline static void set_multiprocess(bool val) { Get().multiprocess_ = val; }
-  inline static bool root_solver() { return Get().solver_rank_ == 0; }
+  //在训练时，为了多GPU并行处理，负责更新网络参数的solver叫做root_solver，其他的solver只负责计算梯度，叫做worker solver 
+  inline static bool root_solver() { return Get().solver_rank_ == 0; } 
 
  protected:
 #ifndef CPU_ONLY

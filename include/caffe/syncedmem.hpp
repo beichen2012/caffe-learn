@@ -59,12 +59,12 @@ class SyncedMemory {
   SyncedMemory();
   explicit SyncedMemory(size_t size);
   ~SyncedMemory();
-  const void* cpu_data();
-  void set_cpu_data(void* data);
-  const void* gpu_data();
-  void set_gpu_data(void* data);
-  void* mutable_cpu_data();
-  void* mutable_gpu_data();
+  const void* cpu_data();			//返回 CPU上分配的数据
+  void set_cpu_data(void* data);											// 把自己的cpu数据释放掉，指针指向data
+  const void* gpu_data();			//返回GPU上分配 的数据
+  void set_gpu_data(void* data);											//把自己的GPU数据释放掉，指针向向data
+  void* mutable_cpu_data();			//返回CPU上分配 的数据，并把 HEAD指向CPU
+  void* mutable_gpu_data();			//返回GPU上分配 的数据，并把 HEAD指向GPU
   enum SyncedHead { UNINITIALIZED, HEAD_AT_CPU, HEAD_AT_GPU, SYNCED };
   SyncedHead head() { return head_; }
   size_t size() { return size_; }
@@ -76,15 +76,15 @@ class SyncedMemory {
  private:
   void check_device();
 
-  void to_cpu();
+  void to_cpu();			
   void to_gpu();
   void* cpu_ptr_;
   void* gpu_ptr_;
   size_t size_;
-  SyncedHead head_;
-  bool own_cpu_data_;
+  SyncedHead head_;				//标识现在的最新数据在哪里，
+  bool own_cpu_data_;			//标识本类是否拥有CPU数据的内存，即标识 cpu_ptr_指向的内存是不是自己申请的，还是指向别人申请的
   bool cpu_malloc_use_cuda_;
-  bool own_gpu_data_;
+  bool own_gpu_data_;			// 道理同上
   int device_;
 
   DISABLE_COPY_AND_ASSIGN(SyncedMemory);

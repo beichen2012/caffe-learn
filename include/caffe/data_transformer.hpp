@@ -28,7 +28,7 @@ class DataTransformer {
   /**
    * @brief Applies the transformation defined in the data layer's
    * transform_param block to the data.
-   *
+   * 将一个datum数据，转换成一个blob, trainsformed_blob的shape为： 1 * C * H * W
    * @param datum
    *    Datum containing the data to be transformed.
    * @param transformed_blob
@@ -40,7 +40,8 @@ class DataTransformer {
   /**
    * @brief Applies the transformation defined in the data layer's
    * transform_param block to a vector of Datum.
-   *
+   * 功能同上，但是是将一组datum转换成一个blob，transformed_blob的shape为： N * C * H * W，
+   * 
    * @param datum_vector
    *    A vector of Datum containing the data to be transformed.
    * @param transformed_blob
@@ -138,6 +139,7 @@ class DataTransformer {
    */
   virtual int Rand(int n);
 
+  // 真正的，最底层进行数据转换功能 的函数，将datum类型的数据，经过裁剪、减均值、缩放等操作转换成 Dtype*的数据
   void Transform(const Datum& datum, Dtype* transformed_data);
   // Tranformation parameters
   TransformationParameter param_;

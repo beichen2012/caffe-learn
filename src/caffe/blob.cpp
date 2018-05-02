@@ -23,21 +23,21 @@ template <typename Dtype>
 void Blob<Dtype>::Reshape(const vector<int>& shape) {
   CHECK_LE(shape.size(), kMaxBlobAxes);
   count_ = 1;
-  shape_.resize(shape.size());
-  if (!shape_data_ || shape_data_->size() < shape.size() * sizeof(int)) {
+  shape_.resize(shape.size()); //shape_的尺寸与输入相同
+  if (!shape_data_ || shape_data_->size() < shape.size() * sizeof(int)) {    //如果 shape_data_ 还没有分配，或是分配的内存不足，则重新分配
     shape_data_.reset(new SyncedMemory(shape.size() * sizeof(int)));
   }
-  int* shape_data = static_cast<int*>(shape_data_->mutable_cpu_data());
+  int* shape_data = static_cast<int*>(shape_data_->mutable_cpu_data());		//在CPU上分配内存
   for (int i = 0; i < shape.size(); ++i) {
     CHECK_GE(shape[i], 0);
     if (count_ != 0) {
       CHECK_LE(shape[i], INT_MAX / count_) << "blob size exceeds INT_MAX";
     }
-    count_ *= shape[i];
+    count_ *= shape[i];				//其实count_就是 各维度的乘积
     shape_[i] = shape[i];
     shape_data[i] = shape[i];
   }
-  if (count_ > capacity_) {
+  if (count_ > capacity_) {		//给data_, diff_也分配 内存
     capacity_ = count_;
     data_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
     diff_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
@@ -45,7 +45,7 @@ void Blob<Dtype>::Reshape(const vector<int>& shape) {
 }
 
 template <typename Dtype>
-void Blob<Dtype>::Reshape(const BlobShape& shape) {
+void Blob<Dtype>::Reshape(const BlobShape& shape) { //这个接口是为了兼容 protobuf
   CHECK_LE(shape.dim_size(), kMaxBlobAxes);
   vector<int> shape_vec(shape.dim_size());
   for (int i = 0; i < shape.dim_size(); ++i) {
@@ -55,7 +55,7 @@ void Blob<Dtype>::Reshape(const BlobShape& shape) {
 }
 
 template <typename Dtype>
-void Blob<Dtype>::ReshapeLike(const Blob<Dtype>& other) {
+void Blob<Dtype>::ReshapeLike(const Blob<Dtype>& other) {	//把本blob reshape成other的shape
   Reshape(other.shape());
 }
 
@@ -89,7 +89,7 @@ const Dtype* Blob<Dtype>::cpu_data() const {
 template <typename Dtype>
 void Blob<Dtype>::set_cpu_data(Dtype* data) {
   CHECK(data);
-  // Make sure CPU and GPU sizes remain equal
+  // Make sure CPU and GPU sizes remain equal  保证CPU和GPU上data_的内存是一样的
   size_t size = count_ * sizeof(Dtype);
   if (data_->size() != size) {
     data_.reset(new SyncedMemory(size));
@@ -167,20 +167,21 @@ void Blob<Dtype>::ShareDiff(const Blob& other) {
 // The "update" method is used for parameter blobs in a Net, which are stored
 // as Blob<float> or Blob<double> -- hence we do not define it for
 // Blob<int> or Blob<unsigned int>.
+// Updata函数是为网络的参数设计的，只有float和double两种模板 
 template <> void Blob<unsigned int>::Update() { NOT_IMPLEMENTED; }
 template <> void Blob<int>::Update() { NOT_IMPLEMENTED; }
-
+// 在反向梯度计算完，调用 该 函数，更新参数
 template <typename Dtype>
 void Blob<Dtype>::Update() {
-  // We will perform update based on where the data is located.
+  // We will perform update based on where the data is located. //先确定数据在哪里
   switch (data_->head()) {
-  case SyncedMemory::HEAD_AT_CPU:
-    // perform computation on CPU
+  case SyncedMemory::HEAD_AT_CPU:								//数据在CPU
+    // perform computation on CPU -> Y = alpha * X + Y, N为X,Y中的元素个数
     caffe_axpy<Dtype>(count_, Dtype(-1),
         static_cast<const Dtype*>(diff_->cpu_data()),
         static_cast<Dtype*>(data_->mutable_cpu_data()));
     break;
-  case SyncedMemory::HEAD_AT_GPU:
+  case SyncedMemory::HEAD_AT_GPU:								//数据如果在GPU或是如果是同步过的，说明 使用的是GPU，则直接更新GPU即可
   case SyncedMemory::SYNCED:
 #ifndef CPU_ONLY
     // perform computation on GPU
@@ -431,13 +432,14 @@ bool Blob<Dtype>::ShapeEquals(const BlobProto& other) {
 
 template <typename Dtype>
 void Blob<Dtype>::CopyFrom(const Blob& source, bool copy_diff, bool reshape) {
-  if (source.count() != count_ || source.shape() != shape_) {
+  if (source.count() != count_ || source.shape() != shape_) {	//先判断src的shape与本blobshape是否相同
     if (reshape) {
-      ReshapeLike(source);
+      ReshapeLike(source);	//reshape到src的shape
     } else {
       LOG(FATAL) << "Trying to copy blobs of different sizes.";
     }
   }
+  // 分不同的模式
   switch (Caffe::mode()) {
   case Caffe::GPU:
     if (copy_diff) {
@@ -462,6 +464,7 @@ void Blob<Dtype>::CopyFrom(const Blob& source, bool copy_diff, bool reshape) {
   }
 }
 
+//从 protobuf 拷贝blob
 template <typename Dtype>
 void Blob<Dtype>::FromProto(const BlobProto& proto, bool reshape) {
   if (reshape) {
@@ -513,6 +516,7 @@ void Blob<Dtype>::FromProto(const BlobProto& proto, bool reshape) {
   }
 }
 
+//把blob转换成proto
 template <>
 void Blob<double>::ToProto(BlobProto* proto, bool write_diff) const {
   proto->clear_shape();

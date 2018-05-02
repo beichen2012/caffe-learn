@@ -23,16 +23,16 @@ namespace caffe {
 template <typename Dtype>
 class Net {
  public:
-  explicit Net(const NetParameter& param);
+  explicit Net(const NetParameter& param); // 通过NetParameter构造
   explicit Net(const string& param_file, Phase phase,
-      const int level = 0, const vector<string>* stages = NULL);
+      const int level = 0, const vector<string>* stages = NULL);		//通过deploy.txt构造
   virtual ~Net() {}
 
   /// @brief Initialize a network with a NetParameter.
   void Init(const NetParameter& param);
 
   /**
-   * @brief Run Forward and return the result.
+   * @brief Run Forward and return the result.  前向计算，返回结果
    *
    */
   const vector<Blob<Dtype>*>& Forward(Dtype* loss = NULL);
@@ -50,6 +50,9 @@ class Net {
    * extra computation on unrelated branches, and (2) computation starting in
    * the middle may be incorrect if all of the layers of a fan-in are not
    * included.
+   * 计算层与层之间的前向传播
+   * (1)计算start到end之间的传播，可以会牵扯到其他不相关的分支 
+   * (2)从中间层开始计算结果可能 不正确
    */
   Dtype ForwardFromTo(int start, int end);
   Dtype ForwardFrom(int start);
@@ -61,6 +64,7 @@ class Net {
   /**
    * @brief Zeroes out the diffs of all net parameters.
    *        Should be run before Backward.
+   * 清空网络所有的 diffs， 应该在Backward之间调用 
    */
   void ClearParamDiffs();
 
@@ -68,6 +72,7 @@ class Net {
    * The network backward should take no input and output, since it solely
    * computes the gradient w.r.t the parameters, and the data has already been
    * provided during the forward pass.
+   * 反向计算不需要 输入和输出，它只计算梯度，并且它需要 的数据在前向传播时已经存在了
    */
   void Backward();
   void BackwardFromTo(int start, int end);
@@ -75,10 +80,11 @@ class Net {
   void BackwardTo(int end);
 
   /**
-   * @brief Reshape all layers from bottom to top.
+   * @brief Reshape all layers from bottom to top.  reshape所有的层
    *
    * This is useful to propagate changes to layer sizes without running
    * a forward pass, e.g. to compute output feature size.
+   * 这在计算输入shape改变时，不进行真正的前向计算，即可得到所有的层的shape，比如想得到最后输出层的shape信息
    */
   void Reshape();
 
@@ -89,55 +95,57 @@ class Net {
     return loss;
   }
 
-  /// @brief Updates the network weights based on the diff values computed.
+  /// @brief Updates the network weights based on the diff values computed.   在计算完梯度后，调用该函数更新网络权重
   void Update();
   /**
-   * @brief Shares weight data of owner blobs with shared blobs.
+   * @brief Shares weight data of owner blobs with shared blobs. 共享权重 
    *
    * Note: this is called by Net::Init, and thus should normally not be
-   * called manually.
+   * called manually.注意：这个函数是由Net::Init函数调用 的，而且 一般来说，不应该再被手动调用 了
    */
   void ShareWeights();
 
   /**
    * @brief For an already initialized net, implicitly copies (i.e., using no
-   *        additional memory) the pre-trained layers from another Net.
+   *        additional memory) the pre-trained layers from another Net.对于一个已经初始化过的网络，隐式的从另一个网络拷贝 已经训练好的层（什么意思？）
    */
   void ShareTrainedLayersWith(const Net* other);
   // For an already initialized net, CopyTrainedLayersFrom() copies the already
   // trained layers from another net parameter instance.
-  /**
+  /** 对于一个已经初始化过的网络，CopyTrainedLayersFrom函数把那些已经训练 好的网络层参数拷贝进来 
    * @brief For an already initialized net, copies the pre-trained layers from
    *        another Net.
+   * 在拷贝网络参数时，是根据layer name进行拷贝 ，也就是说，不论param是不是这个网络的，只要layer name相同，且参数个数与维度相同，就可以拷贝 
    */
-  void CopyTrainedLayersFrom(const NetParameter& param);
+  void CopyTrainedLayersFrom(const NetParameter& param);		
   void CopyTrainedLayersFrom(const string trained_filename);
   void CopyTrainedLayersFromBinaryProto(const string trained_filename);
   void CopyTrainedLayersFromHDF5(const string trained_filename);
-  /// @brief Writes the net to a proto.
+  /// @brief Writes the net to a proto. 把网络写入proto
   void ToProto(NetParameter* param, bool write_diff = false) const;
-  /// @brief Writes the net to an HDF5 file.
+  /// @brief Writes the net to an HDF5 file. 把网络写入HDF5文件
   void ToHDF5(const string& filename, bool write_diff = false) const;
 
-  /// @brief returns the network name.
+  /// @brief returns the network name. 返回网络名称
   inline const string& name() const { return name_; }
-  /// @brief returns the layer names
+  /// @brief returns the layer names 返回各层的名称
   inline const vector<string>& layer_names() const { return layer_names_; }
-  /// @brief returns the blob names
+  /// @brief returns the blob names 返回各个blob的名称
   inline const vector<string>& blob_names() const { return blob_names_; }
-  /// @brief returns the blobs
+  /// @brief returns the blobs 返回blob
   inline const vector<shared_ptr<Blob<Dtype> > >& blobs() const {
     return blobs_;
   }
-  /// @brief returns the layers
+  /// @brief returns the layers 返回各层
   inline const vector<shared_ptr<Layer<Dtype> > >& layers() const {
     return layers_;
   }
-  /// @brief returns the phase: TRAIN or TEST
+  /// @brief returns the phase: TRAIN or TEST 返回训练阶段
   inline Phase phase() const { return phase_; }
   /**
    * @brief returns the bottom vecs for each layer -- usually you won't
    *        need this unless you do per-layer checks such as gradients.
+   * 返回各层的bottom向量，一般来说你不需要这个函数，除非你要逐层的检查梯度值
    */
   inline const vector<vector<Blob<Dtype>*> >& bottom_vecs() const {
     return bottom_vecs_;
@@ -145,6 +153,7 @@ class Net {
   /**
    * @brief returns the top vecs for each layer -- usually you won't
    *        need this unless you do per-layer checks such as gradients.
+   * 返回各层的top向量，一般来说你不需要这个函数，除非你要逐层的检查梯度值
    */
   inline const vector<vector<Blob<Dtype>*> >& top_vecs() const {
     return top_vecs_;
@@ -219,7 +228,7 @@ class Net {
   // Helpers for Init.
   /**
    * @brief Remove layers that the user specified should be excluded given the current
-   *        phase, level, and stage.
+   *        phase, level, and stage.  去掉那些用户指定的层，准则是：给定的当前的阶段，level,stage
    */
   static void FilterNet(const NetParameter& param,
       NetParameter* param_filtered);
@@ -273,13 +282,13 @@ class Net {
   /// @brief Helper for displaying debug info in Update.
   void UpdateDebugInfo(const int param_id);
 
-  /// @brief The network name
+  /// @brief The network name 网络名称
   string name_;
-  /// @brief The phase: TRAIN or TEST
+  /// @brief The phase: TRAIN or TEST 阶段
   Phase phase_;
   /// @brief Individual layers in the net
-  vector<shared_ptr<Layer<Dtype> > > layers_;
-  vector<string> layer_names_;
+  vector<shared_ptr<Layer<Dtype> > > layers_;	//网络的各个层
+  vector<string> layer_names_;					//各个层的名称
   map<string, int> layer_names_index_;
   vector<bool> layer_need_backward_;
   /// @brief the blobs storing intermediate results between the layer.
@@ -290,11 +299,11 @@ class Net {
   /// bottom_vecs stores the vectors containing the input for each layer.
   /// They don't actually host the blobs (blobs_ does), so we simply store
   /// pointers.
-  vector<vector<Blob<Dtype>*> > bottom_vecs_;
+  vector<vector<Blob<Dtype>*> > bottom_vecs_;		//每一层的输入向量
   vector<vector<int> > bottom_id_vecs_;
   vector<vector<bool> > bottom_need_backward_;
   /// top_vecs stores the vectors containing the output for each layer
-  vector<vector<Blob<Dtype>*> > top_vecs_;
+  vector<vector<Blob<Dtype>*> > top_vecs_;			//每一层的输出向量
   vector<vector<int> > top_id_vecs_;
   /// Vector of weight in the loss (or objective) function of each net blob,
   /// indexed by blob_id.

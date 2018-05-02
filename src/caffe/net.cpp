@@ -20,7 +20,7 @@
 namespace caffe {
 
 template <typename Dtype>
-Net<Dtype>::Net(const NetParameter& param) {
+Net<Dtype>::Net(const NetParameter& param) { //根据网络参数，初始化网络，prototxt
   Init(param);
 }
 
@@ -28,8 +28,8 @@ template <typename Dtype>
 Net<Dtype>::Net(const string& param_file, Phase phase,
     const int level, const vector<string>* stages) {
   NetParameter param;
-  ReadNetParamsFromTextFileOrDie(param_file, &param);
-  // Set phase, stages and level
+  ReadNetParamsFromTextFileOrDie(param_file, &param); //从prototxt(文本文件）中读取网络参数 
+  // Set phase, stages and level 这个是NetState proto，level和stage不知道是何含义
   param.mutable_state()->set_phase(phase);
   if (stages != NULL) {
     for (int i = 0; i < stages->size(); i++) {
@@ -37,55 +37,57 @@ Net<Dtype>::Net(const string& param_file, Phase phase,
     }
   }
   param.mutable_state()->set_level(level);
-  Init(param);
+  Init(param);		//使用网络结构参数，初始化网络
 }
 
 template <typename Dtype>
 void Net<Dtype>::Init(const NetParameter& in_param) {
-  // Set phase from the state.
+  // Set phase from the state.网络是训练还是测试阶段，这里应该就是CAFFE::PHASE
   phase_ = in_param.state().phase();
   // Filter layers based on their include/exclude rules and
-  // the current NetState.
+  // the current NetState. 根据各层的信息(phase, level, stage)，决定层是否该 被排除出去
   NetParameter filtered_param;
   FilterNet(in_param, &filtered_param);
   LOG_IF(INFO, Caffe::root_solver())
       << "Initializing net from parameters: " << std::endl
       << filtered_param.DebugString();
   // Create a copy of filtered_param with splits added where necessary.
+  // 查看是否有共用top或是共用bottom的情况 
   NetParameter param;
   InsertSplits(filtered_param, &param);
   // Basically, build all the layers and set up their connections.
-  name_ = param.name();
+  // 构建所有的层结构
+  name_ = param.name(); //网络名称 
   map<string, int> blob_name_to_idx;
   set<string> available_blobs;
   memory_used_ = 0;
-  // For each layer, set up its input and output
-  bottom_vecs_.resize(param.layer_size());
+  // For each layer, set up its input and output 对于每一层，配置它的输入与输出
+  bottom_vecs_.resize(param.layer_size());	
   top_vecs_.resize(param.layer_size());
   bottom_id_vecs_.resize(param.layer_size());
   param_id_vecs_.resize(param.layer_size());
   top_id_vecs_.resize(param.layer_size());
   bottom_need_backward_.resize(param.layer_size());
-  for (int layer_id = 0; layer_id < param.layer_size(); ++layer_id) {
-    // Inherit phase from net if unset.
+  for (int layer_id = 0; layer_id < param.layer_size(); ++layer_id) {	// 遍历所有的层
+    // Inherit phase from net if unset.（如果层的Pahse没有设置，则默认是网络的phase)
     if (!param.layer(layer_id).has_phase()) {
       param.mutable_layer(layer_id)->set_phase(phase_);
     }
-    // Setup layer.
-    const LayerParameter& layer_param = param.layer(layer_id);
+    // Setup layer. 配置层
+    const LayerParameter& layer_param = param.layer(layer_id);  //该层的layer param
     if (layer_param.propagate_down_size() > 0) {
       CHECK_EQ(layer_param.propagate_down_size(),
           layer_param.bottom_size())
           << "propagate_down param must be specified "
           << "either 0 or bottom_size times ";
     }
-    layers_.push_back(LayerRegistry<Dtype>::CreateLayer(layer_param));
-    layer_names_.push_back(layer_param.name());
+    layers_.push_back(LayerRegistry<Dtype>::CreateLayer(layer_param)); //根据层参数，创建层
+    layer_names_.push_back(layer_param.name());							//保存层的名称
     LOG_IF(INFO, Caffe::root_solver())
         << "Creating Layer " << layer_param.name();
     bool need_backward = false;
 
-    // Figure out this layer's input and output
+    // Figure out this layer's input and output 计算出该层的输入和输出
     for (int bottom_id = 0; bottom_id < layer_param.bottom_size();
          ++bottom_id) {
       const int blob_id = AppendBottom(param, layer_id, bottom_id,
@@ -258,20 +260,20 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
 template <typename Dtype>
 void Net<Dtype>::FilterNet(const NetParameter& param,
     NetParameter* param_filtered) {
-  NetState net_state(param.state());
-  param_filtered->CopyFrom(param);
-  param_filtered->clear_layer();
-  for (int i = 0; i < param.layer_size(); ++i) {
+  NetState net_state(param.state());	 //Netstate
+  param_filtered->CopyFrom(param);		 //先把网络完全拷贝过来
+  param_filtered->clear_layer();		 //把各个层清空
+  for (int i = 0; i < param.layer_size(); ++i) {  //逐层遍历
     const LayerParameter& layer_param = param.layer(i);
     const string& layer_name = layer_param.name();
     CHECK(layer_param.include_size() == 0 || layer_param.exclude_size() == 0)
           << "Specify either include rules or exclude rules; not both.";
     // If no include rules are specified, the layer is included by default and
     // only excluded if it meets one of the exclude rules.
-    bool layer_included = (layer_param.include_size() == 0);
+    bool layer_included = (layer_param.include_size() == 0);// 如果没有指定包含或是排除，则默认是包含
     for (int j = 0; layer_included && j < layer_param.exclude_size(); ++j) {
       if (StateMeetsRule(net_state, layer_param.exclude(j), layer_name)) {
-        layer_included = false;
+        layer_included = false;//根据NetStateRule判定是否需要 排除
       }
     }
     for (int j = 0; !layer_included && j < layer_param.include_size(); ++j) {
@@ -279,7 +281,7 @@ void Net<Dtype>::FilterNet(const NetParameter& param,
         layer_included = true;
       }
     }
-    if (layer_included) {
+    if (layer_included) { //如果需要 该 层，则把这一层的参数加进来
       param_filtered->add_layer()->CopyFrom(layer_param);
     }
   }
@@ -733,14 +735,15 @@ template <typename Dtype>
 void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
   int num_source_layers = param.layer_size();
   for (int i = 0; i < num_source_layers; ++i) {
-    const LayerParameter& source_layer = param.layer(i);
-    const string& source_layer_name = source_layer.name();
-    int target_layer_id = 0;
+    const LayerParameter& source_layer = param.layer(i);		// 输入param的第i层
+    const string& source_layer_name = source_layer.name();		//第i层的名称
+    int target_layer_id = 0;  
+	//遍历本网络，查找与输入param第i层的layer name相机的索引
     while (target_layer_id != layer_names_.size() &&
         layer_names_[target_layer_id] != source_layer_name) {
       ++target_layer_id;
     }
-    if (target_layer_id == layer_names_.size()) {
+    if (target_layer_id == layer_names_.size()) {   //如果没有找到同名的层，则跳过
       LOG(INFO) << "Ignoring source layer " << source_layer_name;
       continue;
     }
@@ -841,8 +844,8 @@ void Net<Dtype>::ToProto(NetParameter* param, bool write_diff) const {
   // Add bottom and top
   DLOG(INFO) << "Serializing " << layers_.size() << " layers";
   for (int i = 0; i < layers_.size(); ++i) {
-    LayerParameter* layer_param = param->add_layer();
-    layers_[i]->ToProto(layer_param, write_diff);
+    LayerParameter* layer_param = param->add_layer();		//新建一个层
+    layers_[i]->ToProto(layer_param, write_diff);			//写成 proto
   }
 }
 

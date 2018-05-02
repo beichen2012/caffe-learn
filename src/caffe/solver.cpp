@@ -268,13 +268,14 @@ void Solver<Dtype>::Step(int iters) {
 
 template <typename Dtype>
 void Solver<Dtype>::Solve(const char* resume_file) {
-  CHECK(Caffe::root_solver());
+  CHECK(Caffe::root_solver()); //检查是否是root_solver，多GPU模式下，只有root_solver才运行这一部分的代码 
   LOG(INFO) << "Solving " << net_->name();
   LOG(INFO) << "Learning Rate Policy: " << param_.lr_policy();
 
-  // Initialize to false every time we start solving.
+  // Initialize to false every time we start solving.在每次开始之前，把这个变量置为false
   requested_early_exit_ = false;
 
+  //读取之前的训练状态
   if (resume_file) {
     LOG(INFO) << "Restoring previous solver status from " << resume_file;
     Restore(resume_file);
@@ -283,14 +284,14 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // For a network that is trained by the solver, no bottom or top vecs
   // should be given, and we will just provide dummy vecs.
   int start_iter = iter_;
-  Step(param_.max_iter() - iter_);
+  Step(param_.max_iter() - iter_);//逐步训练
   // If we haven't already, save a snapshot after optimization, unless
-  // overridden by setting snapshot_after_train := false
+  // overridden by setting snapshot_after_train := false训练完毕后是否保存 快照
   if (param_.snapshot_after_train()
       && (!param_.snapshot() || iter_ % param_.snapshot() != 0)) {
     Snapshot();
   }
-  if (requested_early_exit_) {
+  if (requested_early_exit_) { //如果是按下了ctrl + c
     LOG(INFO) << "Optimization stopped early.";
     return;
   }
@@ -446,7 +447,7 @@ string Solver<Dtype>::SnapshotToBinaryProto() {
   string model_filename = SnapshotFilename(".caffemodel");
   LOG(INFO) << "Snapshotting to binary proto file " << model_filename;
   NetParameter net_param;
-  net_->ToProto(&net_param, param_.snapshot_diff());
+  net_->ToProto(&net_param, param_.snapshot_diff());	//把当前的网络各层及参数 ，写入到net_param里面
   WriteProtoToBinaryFile(net_param, model_filename);
   return model_filename;
 }

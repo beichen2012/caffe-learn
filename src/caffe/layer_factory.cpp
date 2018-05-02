@@ -37,7 +37,7 @@ namespace caffe {
 template <typename Dtype>
 typename LayerRegistry<Dtype>::CreatorRegistry&
 LayerRegistry<Dtype>::Registry() {
-  static CreatorRegistry* g_registry_ = new CreatorRegistry();
+  static CreatorRegistry* g_registry_ = new CreatorRegistry();		//全局只有这一份（只被初始化一次， static），在第一次注册层时被调用 
   return *g_registry_;
 }
 
@@ -57,7 +57,7 @@ shared_ptr<Layer<Dtype> > LayerRegistry<Dtype>::CreateLayer(
   if (Caffe::root_solver()) {
     LOG(INFO) << "Creating layer " << param.name();
   }
-  const string& type = param.type();
+  const string& type = param.type();				//根据层的类型，创建一个层
   CreatorRegistry& registry = Registry();
   CHECK_EQ(registry.count(type), 1)
       << "Unknown layer type: " << type
@@ -69,7 +69,7 @@ template <typename Dtype>
 vector<string> LayerRegistry<Dtype>::LayerTypeList() {
   CreatorRegistry& registry = Registry();
   vector<string> layer_types;
-  for (typename CreatorRegistry::iterator iter = registry.begin();
+  for (typename CreatorRegistry::iterator iter = registry.begin();  //返回已经注册的层的名称
        iter != registry.end(); ++iter) {
     layer_types.push_back(iter->first);
   }
@@ -79,7 +79,7 @@ vector<string> LayerRegistry<Dtype>::LayerTypeList() {
 // Layer registry should never be instantiated - everything is done with its
 // static variables.
 template <typename Dtype>
-LayerRegistry<Dtype>::LayerRegistry() {}
+LayerRegistry<Dtype>::LayerRegistry() {}  //私有的构造函数，不能被调用
 
 template <typename Dtype>
 string LayerRegistry<Dtype>::LayerTypeListString() {
@@ -89,7 +89,7 @@ string LayerRegistry<Dtype>::LayerTypeListString() {
        iter != layer_types.end(); ++iter) {
     if (iter != layer_types.begin()) {
       layer_types_str += ", ";
-    }
+    }                                             //把所有已经注册的层，返回成一个字符串，中间用逗号隔开
     layer_types_str += *iter;
   }
   return layer_types_str;

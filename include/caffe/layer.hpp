@@ -28,6 +28,7 @@ namespace caffe {
  * They may also implement a Backward function, in which they compute the error
  * gradients with respect to their input Blob%s, given the error gradients with
  * their output Blob%s.
+ * 必须要实现Forward函数和Backward函数，以用来计算前向传播和反向传播
  */
 template <typename Dtype>
 class Layer {
@@ -35,13 +36,13 @@ class Layer {
   /**
    * You should not implement your own constructor. Any set up code should go
    * to SetUp(), where the dimensions of the bottom blobs are provided to the
-   * layer.
+   * layer. 不用实现自己的构造， 任何配置的功能都要在SetUp函数里面实现，包括输入blob的维度
    */
   explicit Layer(const LayerParameter& param)
     : layer_param_(param) {
       // Set phase and copy blobs (if there are any).
-      phase_ = param.phase();
-      if (layer_param_.blobs_size() > 0) {
+      phase_ = param.phase(); //训练阶段还是测试阶段
+      if (layer_param_.blobs_size() > 0) {	//如果有blob参数，把blob拷贝过来 
         blobs_.resize(layer_param_.blobs_size());
         for (int i = 0; i < layer_param_.blobs_size(); ++i) {
           blobs_[i].reset(new Blob<Dtype>());
@@ -54,11 +55,11 @@ class Layer {
   /**
    * @brief Implements common layer setup functionality.
    *
-   * @param bottom the preshaped input blobs
+   * @param bottom the preshaped input blobs 输入blob，要提前reshape好
    * @param top
-   *     the allocated but unshaped output blobs, to be shaped by Reshape
+   *     the allocated but unshaped output blobs, to be shaped by Reshape  输出blob，内存已经分配了，但是还需要调用 一下reshape来调整shape 
    *
-   * Checks that the number of bottom and top blobs is correct.
+   * Checks that the number of bottom and top blobs is correct.				
    * Calls LayerSetUp to do special layer setup for individual layer types,
    * followed by Reshape to set up sizes of top blobs and internal buffers.
    * Sets up the loss weight multiplier blobs for any non-zero loss weights.
@@ -66,34 +67,36 @@ class Layer {
    */
   void SetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-    CheckBlobCounts(bottom, top);
-    LayerSetUp(bottom, top);
-    Reshape(bottom, top);
-    SetLossWeights(top);
+    CheckBlobCounts(bottom, top);	//
+    LayerSetUp(bottom, top);		//
+    Reshape(bottom, top);			//
+    SetLossWeights(top);			//
   }
 
   /**
    * @brief Does layer-specific setup: your layer should implement this function
-   *        as well as Reshape.
+   *        as well as Reshape.		//实现特定的配置，你的layer要实现 这个函数，同时实现Reshape函数
    *
    * @param bottom
    *     the preshaped input blobs, whose data fields store the input data for
-   *     this layer
+   *     this layer 输入blob,它的data属性保存有该 层的输入数据
    * @param top
-   *     the allocated but unshaped output blobs
+   *     the allocated but unshaped output blobs		//输出blob,内存分配 了，但是shape并不是本层输出的shape，后面需要 reshape 
    *
    * This method should do one-time layer specific setup. This includes reading
    * and processing relevent parameters from the <code>layer_param_</code>.
+   * 这个函数只用调用一次，从layer_param中读取和处理相关的参数 
    * Setting up the shapes of top blobs and internal buffers should be done in
    * <code>Reshape</code>, which will be called before the forward pass to
    * adjust the top blob sizes.
+   * 设置top blob和内部缓冲区的shape应该调用 Reshape函数，这个函数在前向传播之前就应该被调用 
    */
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {}
 
   /**
    * @brief Adjust the shapes of top blobs and internal buffers to accommodate
-   *        the shapes of the bottom blobs.
+   *        the shapes of the bottom blobs. 根据bottom blob计算内部缓冲区及top blob的shape，
    *
    * @param bottom the input blobs, with the requested input shapes
    * @param top the top blobs, which should be reshaped as needed
@@ -107,7 +110,7 @@ class Layer {
       const vector<Blob<Dtype>*>& top) = 0;
 
   /**
-   * @brief Given the bottom blobs, compute the top blobs and the loss.
+   * @brief Given the bottom blobs, compute the top blobs and the loss. 根据给定的bottom，计算top和loss
    *
    * @param bottom
    *     the input blobs, whose data fields store the input data for this layer
@@ -120,7 +123,8 @@ class Layer {
    * (Forward_cpu or Forward_gpu) to compute the top blob values given the
    * bottom blobs.  If the layer has any non-zero loss_weights, the wrapper
    * then computes and returns the loss.
-   *
+   * 这个函数是外部接口，内部调用 设备相关的Forward_cpu或者 Forward_gpu去完成前向传播的计算
+   * 如果该层有非0的 loss_weights，这个函数也应当计算并返回相应的loss
    * Your layer should implement Forward_cpu and (optionally) Forward_gpu.
    */
   inline Dtype Forward(const vector<Blob<Dtype>*>& bottom,
@@ -128,18 +132,18 @@ class Layer {
 
   /**
    * @brief Given the top blob error gradients, compute the bottom blob error
-   *        gradients.
+   *        gradients. 给出top的误差梯度，计算bottom的误差梯度（反向传播）
    *
    * @param top
    *     the output blobs, whose diff fields store the gradient of the error
-   *     with respect to themselves
+   *     with respect to themselves： 输出blob，它的diff保存了误差
    * @param propagate_down
    *     a vector with equal length to bottom, with each index indicating
    *     whether to propagate the error gradients down to the bottom blob at
-   *     the corresponding index
+   *     the corresponding index 一个向量，长度跟bottom一样，它的索引标识误差是否反向传播
    * @param bottom
    *     the input blobs, whose diff fields will store the gradient of the error
-   *     with respect to themselves after Backward is run
+   *     with respect to themselves after Backward is run 这个函数调用完后，bottom的误差保存在它的diff里面
    *
    * The Backward wrapper calls the relevant device wrapper function
    * (Backward_cpu or Backward_gpu) to compute the bottom blob diffs given the
@@ -152,31 +156,31 @@ class Layer {
       const vector<Blob<Dtype>*>& bottom);
 
   /**
-   * @brief Returns the vector of learnable parameter blobs.
+   * @brief Returns the vector of learnable parameter blobs. 返回可学习的blob
    */
   vector<shared_ptr<Blob<Dtype> > >& blobs() {
     return blobs_;
   }
 
   /**
-   * @brief Returns the layer parameter.
+   * @brief Returns the layer parameter. 返回该层的参数
    */
   const LayerParameter& layer_param() const { return layer_param_; }
 
   /**
-   * @brief Writes the layer parameter to a protocol buffer
+   * @brief Writes the layer parameter to a protocol buffer 把层参数写入到proto buffer里面
    */
   virtual void ToProto(LayerParameter* param, bool write_diff = false);
 
   /**
-   * @brief Returns the scalar loss associated with a top blob at a given index.
+   * @brief Returns the scalar loss associated with a top blob at a given index. 返回指定索引的Loss
    */
   inline Dtype loss(const int top_index) const {
     return (loss_.size() > top_index) ? loss_[top_index] : Dtype(0);
   }
 
   /**
-   * @brief Sets the loss associated with a top blob at a given index.
+   * @brief Sets the loss associated with a top blob at a given index. 设置指定索引位置的Loss
    */
   inline void set_loss(const int top_index, const Dtype value) {
     if (loss_.size() <= top_index) {
@@ -186,7 +190,7 @@ class Layer {
   }
 
   /**
-   * @brief Returns the layer type.
+   * @brief Returns the layer type. 返回层的类型
    */
   virtual inline const char* type() const { return ""; }
 
@@ -196,6 +200,7 @@ class Layer {
    *
    * This method should be overridden to return a non-negative value if your
    * layer expects some exact number of bottom blobs.
+   * 输入参数有几个
    */
   virtual inline int ExactNumBottomBlobs() const { return -1; }
   /**
@@ -220,6 +225,7 @@ class Layer {
    *
    * This method should be overridden to return a non-negative value if your
    * layer expects some exact number of top blobs.
+   * 输出参数有几个
    */
   virtual inline int ExactNumTopBlobs() const { return -1; }
   /**
@@ -240,7 +246,7 @@ class Layer {
   virtual inline int MaxTopBlobs() const { return -1; }
   /**
    * @brief Returns true if the layer requires an equal number of bottom and
-   *        top blobs.
+   *        top blobs. 如果该 层需要相同的输入和输出参数，则返回true，比如 relu
    *
    * This method should be overridden to return true if your layer expects an
    * equal number of bottom and top blobs.
@@ -293,25 +299,25 @@ class Layer {
 
 
  protected:
-  /** The protobuf that stores the layer parameters */
+  /** The protobuf that stores the layer parameters 保存layer参数的protobuf */
   LayerParameter layer_param_;
-  /** The phase: TRAIN or TEST */
+  /** The phase: TRAIN or TEST 标识是训练阶段还是测试阶段*/
   Phase phase_;
-  /** The vector that stores the learnable parameters as a set of blobs. */
+  /** The vector that stores the learnable parameters as a set of blobs. 保存可学习（可训练）参数的数组*/
   vector<shared_ptr<Blob<Dtype> > > blobs_;
-  /** Vector indicating whether to compute the diff of each param blob. */
+  /** Vector indicating whether to compute the diff of each param blob. 一个数组，标识参数blob是否需要计算diff（是否需要反向传播）*/
   vector<bool> param_propagate_down_;
 
   /** The vector that indicates whether each top blob has a non-zero weight in
-   *  the objective function. */
+   *  the objective function. 标识*/
   vector<Dtype> loss_;
 
-  /** @brief Using the CPU device, compute the layer output. */
+  /** @brief Using the CPU device, compute the layer output. 前向运算，使用CPU*/
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) = 0;
   /**
    * @brief Using the GPU device, compute the layer output.
-   *        Fall back to Forward_cpu() if unavailable.
+   *        Fall back to Forward_cpu() if unavailable. 前向运算，使用GPU
    */
   virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
@@ -342,6 +348,7 @@ class Layer {
    * Called by the parent Layer's SetUp to check that the number of bottom
    * and top Blobs provided as input match the expected numbers specified by
    * the {ExactNum,Min,Max}{Bottom,Top}Blobs() functions.
+   * 如果里面的一些函数返回不是-1（即不是本父类默认定义的，而是子类自己规定的），就检查输入输出 是否符合
    */
   virtual void CheckBlobCounts(const vector<Blob<Dtype>*>& bottom,
                                const vector<Blob<Dtype>*>& top) {

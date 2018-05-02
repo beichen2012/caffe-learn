@@ -5,7 +5,7 @@
 namespace caffe {
 SyncedMemory::SyncedMemory()
   : cpu_ptr_(NULL), gpu_ptr_(NULL), size_(0), head_(UNINITIALIZED),
-    own_cpu_data_(false), cpu_malloc_use_cuda_(false), own_gpu_data_(false) {
+    own_cpu_data_(false), cpu_malloc_use_cuda_(false), own_gpu_data_(false) {  //构造时，所以指针都是Null,
 #ifndef CPU_ONLY
 #ifdef DEBUG
   CUDA_CHECK(cudaGetDevice(&device_));
@@ -15,7 +15,7 @@ SyncedMemory::SyncedMemory()
 
 SyncedMemory::SyncedMemory(size_t size)
   : cpu_ptr_(NULL), gpu_ptr_(NULL), size_(size), head_(UNINITIALIZED),
-    own_cpu_data_(false), cpu_malloc_use_cuda_(false), own_gpu_data_(false) {
+    own_cpu_data_(false), cpu_malloc_use_cuda_(false), own_gpu_data_(false) { //如果指定 size，也不实际分配 ，等到第一次使用时再分配 
 #ifndef CPU_ONLY
 #ifdef DEBUG
   CUDA_CHECK(cudaGetDevice(&device_));
@@ -39,26 +39,26 @@ SyncedMemory::~SyncedMemory() {
 inline void SyncedMemory::to_cpu() {
   check_device();
   switch (head_) {
-  case UNINITIALIZED:
+  case UNINITIALIZED:			//如果还没 分配内存，则直接在cpu上分配内存，
     CaffeMallocHost(&cpu_ptr_, size_, &cpu_malloc_use_cuda_);
     caffe_memset(size_, 0, cpu_ptr_);
-    head_ = HEAD_AT_CPU;
-    own_cpu_data_ = true;
+    head_ = HEAD_AT_CPU;		//把HEAD指向CPU
+    own_cpu_data_ = true;		//拥有CPU数据定为true
     break;
   case HEAD_AT_GPU:
 #ifndef CPU_ONLY
-    if (cpu_ptr_ == NULL) {
+    if (cpu_ptr_ == NULL) {					//数据在GPU上，而且 CPU上没有分配内存，则先分配内存
       CaffeMallocHost(&cpu_ptr_, size_, &cpu_malloc_use_cuda_);
       own_cpu_data_ = true;
     }
-    caffe_gpu_memcpy(size_, gpu_ptr_, cpu_ptr_);
-    head_ = SYNCED;
+    caffe_gpu_memcpy(size_, gpu_ptr_, cpu_ptr_);		//把数据拷到cpu上
+    head_ = SYNCED;							//head 指向SYNCED
 #else
     NO_GPU;
 #endif
     break;
-  case HEAD_AT_CPU:
-  case SYNCED:
+  case HEAD_AT_CPU:				//如果已经在CPU上，直接返回
+  case SYNCED:					//如果已经同步过了，直接返回
     break;
   }
 }

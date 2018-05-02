@@ -43,14 +43,16 @@ class Blob {
    * or Layer::Forward. When changing the size of blob, memory will only be
    * reallocated if sufficient memory does not already exist, and excess memory
    * will never be freed.
-   *
+   * 在初始化分配内存时，在需要适应输入数据维数时，都可以调用这个函数，当改变blob的size时，只有在内存不够时才重新分配内存；
    * Note that reshaping an input blob and immediately calling Net::Backward is
    * an error; either Net::Forward or Net::Reshape need to be called to
    * propagate the new input shape to higher layers.
+   * 当reshape输入blob的shape后，立马调用backward是会出错的
    */
   void Reshape(const vector<int>& shape);
   void Reshape(const BlobShape& shape);
   void ReshapeLike(const Blob& other);
+  // 打印尺寸，用逗号隔开，最后一个数据是各维数的乘积
   inline string shape_string() const {
     ostringstream stream;
     for (int i = 0; i < shape_.size(); ++i) {
@@ -59,11 +61,12 @@ class Blob {
     stream << "(" << count_ << ")";
     return stream.str();
   }
+  //返回shape 
   inline const vector<int>& shape() const { return shape_; }
   /**
    * @brief Returns the dimension of the index-th axis (or the negative index-th
    *        axis from the end, if index is negative).
-   *
+   * 可以是负值，类似于python的索引
    * @param index the axis index, which may be negative as it will be
    *        "canonicalized" using CanonicalAxisIndex.
    *        Dies on out of range index.
@@ -71,13 +74,15 @@ class Blob {
   inline int shape(int index) const {
     return shape_[CanonicalAxisIndex(index)];
   }
+  // 总共有几维
   inline int num_axes() const { return shape_.size(); }
+  // 各维数的乘积
   inline int count() const { return count_; }
 
   /**
    * @brief Compute the volume of a slice; i.e., the product of dimensions
    *        among a range of axes.
-   *
+   *	slice[start, end)之间维数的乘积
    * @param start_axis The first axis to include in the slice.
    *
    * @param end_axis The first axis to exclude from the slice.
@@ -97,7 +102,7 @@ class Blob {
   /**
    * @brief Compute the volume of a slice spanning from a particular first
    *        axis to the final axis.
-   *
+   * slice[start:]的乘积
    * @param start_axis The first axis to include in the slice.
    */
   inline int count(int start_axis) const {
@@ -107,7 +112,7 @@ class Blob {
   /**
    * @brief Returns the 'canonical' version of a (usually) user-specified axis,
    *        allowing for negative indexing (e.g., -1 for the last axis).
-   *
+   * 返回axis_index的正确索引 ，axis_index可以是负值，该 函数会返回其正常的C++风格的索引
    * @param axis_index the axis index.
    *        If 0 <= index < num_axes(), return index.
    *        If -num_axes <= index <= -1, return (num_axes() - (-index)),
@@ -128,6 +133,7 @@ class Blob {
     return axis_index;
   }
 
+  // 这几个不再推荐使用的方法
   /// @brief Deprecated legacy shape accessor num: use shape(0) instead.
   inline int num() const { return LegacyShape(0); }
   /// @brief Deprecated legacy shape accessor channels: use shape(1) instead.
@@ -150,6 +156,7 @@ class Blob {
     return shape(index);
   }
 
+  // 指针偏移量 ： n * C * H * W + c * H * W + h * W + w 数据的索引，按层排列
   inline int offset(const int n, const int c = 0, const int h = 0,
       const int w = 0) const {
     CHECK_GE(n, 0);
@@ -163,6 +170,7 @@ class Blob {
     return ((n * channels() + c) * height() + h) * width() + w;
   }
 
+  // 指针偏移量： 这个不理解 
   inline int offset(const vector<int>& indices) const {
     CHECK_LE(indices.size(), num_axes());
     int offset = 0;
@@ -177,13 +185,13 @@ class Blob {
     return offset;
   }
   /**
-   * @brief Copy from a source Blob.
+   * @brief Copy from a source Blob. 从一个blob拷贝它的数据
    *
-   * @param source the Blob to copy from
-   * @param copy_diff if false, copy the data; if true, copy the diff
+   * @param source the Blob to copy from 源blob
+   * @param copy_diff if false, copy the data; if true, copy the diff 如果是false，则拷贝data_,真的话拷贝 diff_。
    * @param reshape if false, require this Blob to be pre-shaped to the shape
    *        of other (and die otherwise); if true, Reshape this Blob to other's
-   *        shape if necessary
+   *        shape if necessary 如果reshape=false，那么就需要这个blob是被提前reshape过的,它与源blob的尺寸要相同
    */
   void CopyFrom(const Blob<Dtype>& source, bool copy_diff = false,
       bool reshape = false);
@@ -269,10 +277,10 @@ class Blob {
  protected:
   shared_ptr<SyncedMemory> data_;
   shared_ptr<SyncedMemory> diff_;
-  shared_ptr<SyncedMemory> shape_data_;
-  vector<int> shape_;
-  int count_;
-  int capacity_;
+  shared_ptr<SyncedMemory> shape_data_;		//它的数据跟 shape_是一样的
+  vector<int> shape_;						//标识data_的维度如 1*3*227*227
+  int count_;								//data_各维度的乘积
+  int capacity_;							//data_实际拥有的内存
 
   DISABLE_COPY_AND_ASSIGN(Blob);
 };  // class Blob

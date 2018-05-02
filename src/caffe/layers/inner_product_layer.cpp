@@ -12,29 +12,29 @@ void InnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   const int num_output = this->layer_param_.inner_product_param().num_output();
   bias_term_ = this->layer_param_.inner_product_param().bias_term();
   transpose_ = this->layer_param_.inner_product_param().transpose();
-  N_ = num_output;
+  N_ = num_output;																	//输出数据的维度				
   const int axis = bottom[0]->CanonicalAxisIndex(
       this->layer_param_.inner_product_param().axis());
   // Dimensions starting from "axis" are "flattened" into a single
   // length K_ vector. For example, if bottom[0]'s shape is (N, C, H, W),
   // and axis == 1, N inner products with dimension CHW are performed.
-  K_ = bottom[0]->count(axis);
+  K_ = bottom[0]->count(axis); // 从第axis维到最后一维的乘积							//输入数据的维度
   // Check if we need to set up the weights
   if (this->blobs_.size() > 0) {
-    LOG(INFO) << "Skipping parameter initialization";
+    LOG(INFO) << "Skipping parameter initialization";			//这种情况 是从文件加载了参数（构造的时候就做了）
   } else {
     if (bias_term_) {
-      this->blobs_.resize(2);
+      this->blobs_.resize(2);	//需要训练b
     } else {
-      this->blobs_.resize(1);
+      this->blobs_.resize(1);	//不需要 训练b
     }
     // Initialize the weights
     vector<int> weight_shape(2);
-    if (transpose_) {
-      weight_shape[0] = K_;
+    if (transpose_) {	//是否需要 转置
+      weight_shape[0] = K_;					
       weight_shape[1] = N_;
     } else {
-      weight_shape[0] = N_;
+      weight_shape[0] = N_;				//N行K列
       weight_shape[1] = K_;
     }
     this->blobs_[0].reset(new Blob<Dtype>(weight_shape));
@@ -51,30 +51,30 @@ void InnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       bias_filler->Fill(this->blobs_[1].get());
     }
   }  // parameter initialization
-  this->param_propagate_down_.resize(this->blobs_.size(), true);
+  this->param_propagate_down_.resize(this->blobs_.size(), true);  //标识 W, b都需要反向传播
 }
 
 template <typename Dtype>
-void InnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top) {
-  // Figure out the dimensions
+void InnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,		//bottom的长度肯定是1，假定bottom[0]的shape是： 1*256*6*6
+      const vector<Blob<Dtype>*>& top) {										//假定num_output = 4096, 即N = 4096
+  // Figure out the dimensions 计算出维度
   const int axis = bottom[0]->CanonicalAxisIndex(
-      this->layer_param_.inner_product_param().axis());
-  const int new_K = bottom[0]->count(axis);
-  CHECK_EQ(K_, new_K)
+      this->layer_param_.inner_product_param().axis());							//默认是1，假定是1
+  const int new_K = bottom[0]->count(axis);										//256*6*6=9216
+  CHECK_EQ(K_, new_K)    //这俩肯定相等阿，计算过程都一样
       << "Input size incompatible with inner product parameters.";
   // The first "axis" dimensions are independent inner products; the total
   // number of these is M_, the product over these dimensions.
-  M_ = bottom[0]->count(0, axis);
+  M_ = bottom[0]->count(0, axis);												// 1			
   // The top shape will be the bottom shape with the flattened axes dropped,
   // and replaced by a single axis with dimension num_output (N_).
-  vector<int> top_shape = bottom[0]->shape();
-  top_shape.resize(axis + 1);
-  top_shape[axis] = N_;
+  vector<int> top_shape = bottom[0]->shape();									//{1,256,6,6}
+  top_shape.resize(axis + 1);													//长度变成2，也就是缩小了，后面的就丢弃了，top_shape = {1,256}
+  top_shape[axis] = N_;															// top_shape = {1, 4096}
   top[0]->Reshape(top_shape);
   // Set up the bias multiplier
   if (bias_term_) {
-    vector<int> bias_shape(1, M_);
+    vector<int> bias_shape(1, M_);												//bias_shape = {1, 256}
     bias_multiplier_.Reshape(bias_shape);
     caffe_set(M_, Dtype(1), bias_multiplier_.mutable_cpu_data());
   }

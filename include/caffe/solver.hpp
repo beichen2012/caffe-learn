@@ -88,6 +88,7 @@ class Solver {
     callbacks_.push_back(value);
   }
 
+  //查看保存模型的目录是否有权限写入
   void CheckSnapshotWritePermissions();
   /**
    * @brief Returns the solver type.
@@ -105,7 +106,7 @@ class Solver {
   void Test(const int test_net_id = 0);
   virtual void SnapshotSolverState(const string& model_filename) = 0;
   virtual void RestoreSolverStateFromHDF5(const string& state_file) = 0;
-  virtual void RestoreSolverStateFromBinaryProto(const string& state_file) = 0;
+  virtual void RestoreSolverStateFromBinaryProto(const string& state_file) = 0; //从文件中恢复
   void DisplayOutputBlobs(const int net_id);
   void UpdateSmoothedLoss(Dtype loss, int start_iter, int average_loss);
 
