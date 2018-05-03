@@ -1,4 +1,6 @@
 ## General
+build-old/
+tags
 
 # Compiled Object files
 *.slo
