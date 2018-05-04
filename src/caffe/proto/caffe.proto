@@ -420,6 +420,8 @@ message LayerParameter {
   optional ThresholdParameter threshold_param = 128;
   optional TileParameter tile_param = 138;
   optional WindowDataParameter window_data_param = 129;
+  optional NormalizeParameter norm_param = 200;
+  optional FocalLossParameter focal_loss_param = 201;
 }
 
 // Message that stores parameters used to apply transformation
@@ -1155,6 +1157,9 @@ message SoftmaxParameter {
   // from the end (e.g., -1 for the last axis).
   // Any other axes will be evaluated as independent softmaxes.
   optional int32 axis = 2 [default = 1];
+    //为解决类别不平衡，引入对某一类的Loss增加一个乘数
+  optional float pos_mult = 3 [default = 1];
+  optional int32 pos_cid = 4 [default = 1];
 }
 
 // Message that stores parameters used by SwishLayer
@@ -1433,4 +1438,25 @@ message PReLUParameter {
   optional FillerParameter filler = 1;
   // Whether or not slope parameters are shared across channels.
   optional bool channel_shared = 2 [default = false];
+}
+message FocalLossParameter {
+  enum Type {
+    ORIGIN = 0; // FL(p_t)  = -(1 - p_t) ^ gama * log(p_t), where p_t = p if y == 1 else 1 - p, whre p = sigmoid(x)
+    LINEAR = 1; // FL*(p_t) = -log(p_t) / gama, where p_t = sigmoid(gama * x_t + beta), where x_t = x * y, y is the ground truth label {-1, 1}
+    ONEADDP = 2;
+  }
+  optional Type type   = 1 [default = ORIGIN]; 
+  optional float gamma = 2 [default = 2];
+  // cross-categories weights to solve the imbalance problem
+  optional float alpha = 3 [default = 1.0]; 
+  optional float beta  = 4 [default = 1.0];
+}
+message NormalizeParameter {
+  optional bool across_spatial = 1 [default = true];
+  // Initial value of scale. Default is 1.0 for all
+  optional FillerParameter scale_filler = 2;
+  // Whether or not scale parameters are shared across channels.
+  optional bool channel_shared = 3 [default = true];
+  // Epsilon for not dividing by zero while normalizing variance
+  optional float eps = 4 [default = 1e-10];
 }
