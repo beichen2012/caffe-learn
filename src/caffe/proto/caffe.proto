@@ -406,6 +406,7 @@ message LayerParameter {
   optional TileParameter tile_param = 138;
   optional WindowDataParameter window_data_param = 129;
   optional NormalizeParameter norm_param = 200;
+  optional FocalLossParameter focal_loss_param = 201;
 }
 
 // Message that stores parameters used to apply transformation
@@ -1426,3 +1427,17 @@ message PReLUParameter {
   // Whether or not slope parameters are shared across channels.
   optional bool channel_shared = 2 [default = false];
 }
+
+message FocalLossParameter {
+  enum Type {
+    ORIGIN = 0; // FL(p_t)  = -(1 - p_t) ^ gama * log(p_t), where p_t = p if y == 1 else 1 - p, whre p = sigmoid(x)
+    LINEAR = 1; // FL*(p_t) = -log(p_t) / gama, where p_t = sigmoid(gama * x_t + beta), where x_t = x * y, y is the ground truth label {-1, 1}
+    ONEADDP = 2;
+  }
+  optional Type type   = 1 [default = ORIGIN]; 
+  optional float gamma = 2 [default = 2];
+  // cross-categories weights to solve the imbalance problem
+  optional float alpha = 3 [default = 1.0]; 
+  optional float beta  = 4 [default = 1.0];
+}
+
