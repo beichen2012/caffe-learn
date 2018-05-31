@@ -407,6 +407,7 @@ message LayerParameter {
   optional WindowDataParameter window_data_param = 129;
   optional NormalizeParameter norm_param = 200;
   optional FocalLossParameter focal_loss_param = 201;
+  optional SwishParameter swish_param = 202;
 }
 
 // Message that stores parameters used to apply transformation
@@ -1439,5 +1440,13 @@ message FocalLossParameter {
   // cross-categories weights to solve the imbalance problem
   optional float alpha = 3 [default = 1.0]; 
   optional float beta  = 4 [default = 1.0];
+}
+// Message that stores parameters used by SwishLayer
+message SwishParameter {
+  // Beta parameter for the Swish activation function
+  // Described in:
+  // Prajit Ramachandran, Barret Zoph, Quoc V. Le. (2017). Searching for
+  // Activation Functions. https://arxiv.org/abs/1710.05941v2
+  optional float beta = 1 [default = 1];
 }
 
