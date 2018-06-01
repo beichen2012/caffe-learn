@@ -74,11 +74,11 @@ class Solver {
   }
   int iter() const { return iter_; }
 
-  // Invoked at specific points during an iteration
+  // Invoked at specific points during an iteration： 在单步训练时，调用。
   class Callback {
    protected:
-    virtual void on_start() = 0;
-    virtual void on_gradients_ready() = 0;
+    virtual void on_start() = 0;				//在forward 之前
+    virtual void on_gradients_ready() = 0;		//在backward 之后
 
     template <typename T>
     friend class Solver;

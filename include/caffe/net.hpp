@@ -88,11 +88,12 @@ class Net {
    */
   void Reshape();
 
-  Dtype ForwardBackward() {
-    Dtype loss;
-    Forward(&loss);
-    Backward();
-    return loss;
+  Dtype ForwardBackward() 
+  {
+		Dtype loss;
+		Forward(&loss);
+		Backward();
+		return loss;
   }
 
   /// @brief Updates the network weights based on the diff values computed.   在计算完梯度后，调用该函数更新网络权重
@@ -319,8 +320,8 @@ class Net {
   vector<Blob<Dtype>*> net_input_blobs_;
   vector<Blob<Dtype>*> net_output_blobs_;
   /// The parameters in the network.
-  vector<shared_ptr<Blob<Dtype> > > params_;
-  vector<Blob<Dtype>*> learnable_params_;
+  vector<shared_ptr<Blob<Dtype> > > params_;//各个layer的blob，同样使用shared_ptr
+  vector<Blob<Dtype>*> learnable_params_;//各个layer的blob, layer的blob是一个shared_ptr,这里直接保存这个shared_ptr的裸指针，实际指向的是同一块内存
   /**
    * The mapping from params_ -> learnable_params_: we have
    * learnable_param_ids_.size() == params_.size(),

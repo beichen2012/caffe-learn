@@ -24,7 +24,8 @@ namespace caffe {
 // where base_lr, max_iter, gamma, step, stepvalue and power are defined
 // in the solver parameter protocol buffer, and iter is the current iteration.
 template <typename Dtype>
-Dtype SGDSolver<Dtype>::GetLearningRate() {
+Dtype SGDSolver<Dtype>::GetLearningRate() 
+{
   Dtype rate;
   const string& lr_policy = this->param_.lr_policy();
   if (lr_policy == "fixed") {
@@ -78,41 +79,46 @@ void SGDSolver<Dtype>::PreSolve() {
 }
 
 template <typename Dtype>
-void SGDSolver<Dtype>::ClipGradients() {
-  const Dtype clip_gradients = this->param_.clip_gradients();
-  if (clip_gradients < 0) { return; }
-  const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
-  Dtype sumsq_diff = 0;
-  for (int i = 0; i < net_params.size(); ++i) {
-    sumsq_diff += net_params[i]->sumsq_diff();
-  }
-  const Dtype l2norm_diff = std::sqrt(sumsq_diff);
-  if (l2norm_diff > clip_gradients) {
-    Dtype scale_factor = clip_gradients / l2norm_diff;
-    LOG(INFO) << "Gradient clipping: scaling down gradients (L2 norm "
-        << l2norm_diff << " > " << clip_gradients << ") "
-        << "by scale factor " << scale_factor;
-    for (int i = 0; i < net_params.size(); ++i) {
-      net_params[i]->scale_diff(scale_factor);
-    }
-  }
+void SGDSolver<Dtype>::ClipGradients() 
+{
+	  const Dtype clip_gradients = this->param_.clip_gradients();
+	  if (clip_gradients < 0) { return; }
+	  const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
+	  Dtype sumsq_diff = 0;
+	  for (int i = 0; i < net_params.size(); ++i) {
+		sumsq_diff += net_params[i]->sumsq_diff();
+	  }
+	  const Dtype l2norm_diff = std::sqrt(sumsq_diff);
+	  if (l2norm_diff > clip_gradients) {
+		Dtype scale_factor = clip_gradients / l2norm_diff;
+		LOG(INFO) << "Gradient clipping: scaling down gradients (L2 norm "
+			<< l2norm_diff << " > " << clip_gradients << ") "
+			<< "by scale factor " << scale_factor;
+		for (int i = 0; i < net_params.size(); ++i) {
+		  net_params[i]->scale_diff(scale_factor);
+		}
+	  }
 }
 
 template <typename Dtype>
-void SGDSolver<Dtype>::ApplyUpdate() {
-  Dtype rate = GetLearningRate();
-  if (this->param_.display() && this->iter_ % this->param_.display() == 0) {
-    LOG_IF(INFO, Caffe::root_solver()) << "Iteration " << this->iter_
-        << ", lr = " << rate;
-  }
-  ClipGradients();
-  for (int param_id = 0; param_id < this->net_->learnable_params().size();
-       ++param_id) {
-    Normalize(param_id);
-    Regularize(param_id);
-    ComputeUpdateValue(param_id, rate);
-  }
-  this->net_->Update();
+void SGDSolver<Dtype>::ApplyUpdate() 
+{
+	  Dtype rate = GetLearningRate();
+	  if (this->param_.display() && this->iter_ % this->param_.display() == 0) 
+	  {
+		LOG_IF(INFO, Caffe::root_solver()) << "Iteration " << this->iter_
+			<< ", lr = " << rate;
+	  }
+	  //
+	  ClipGradients();
+	  //
+	  for (int param_id = 0; param_id < this->net_->learnable_params().size(); ++param_id) 
+	  {
+		Normalize(param_id);
+		Regularize(param_id);
+		ComputeUpdateValue(param_id, rate);
+	  }
+	  this->net_->Update();
 }
 
 template <typename Dtype>
@@ -302,12 +308,13 @@ void SGDSolver<Dtype>::SnapshotSolverStateToHDF5(
 }
 
 template <typename Dtype>
-void SGDSolver<Dtype>::RestoreSolverStateFromBinaryProto(
-    const string& state_file) {
+void SGDSolver<Dtype>::RestoreSolverStateFromBinaryProto( const string& state_file) 
+{
   SolverState state;
   ReadProtoFromBinaryFile(state_file, &state);
   this->iter_ = state.iter();
-  if (state.has_learned_net()) {
+  if (state.has_learned_net()) 
+  {
     NetParameter net_param;
     ReadNetParamsFromBinaryFileOrDie(state.learned_net().c_str(), &net_param);
     this->net_->CopyTrainedLayersFrom(net_param);
@@ -316,7 +323,8 @@ void SGDSolver<Dtype>::RestoreSolverStateFromBinaryProto(
   CHECK_EQ(state.history_size(), history_.size())
       << "Incorrect length of history blobs.";
   LOG(INFO) << "SGDSolver: restoring history";
-  for (int i = 0; i < history_.size(); ++i) {
+  for (int i = 0; i < history_.size(); ++i)
+  {
     history_[i]->FromProto(state.history(i));
   }
 }

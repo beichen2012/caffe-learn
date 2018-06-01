@@ -177,21 +177,24 @@ void Solver<Dtype>::InitTestNets() {
 }
 
 template <typename Dtype>
-void Solver<Dtype>::Step(int iters) {
+void Solver<Dtype>::Step(int iters)
+{
   const int start_iter = iter_;
   const int stop_iter = iter_ + iters;
-  int average_loss = this->param_.average_loss();
+  int average_loss = this->param_.average_loss(); //这个值默认是1
   losses_.clear();
   smoothed_loss_ = 0;
   iteration_timer_.Start();
 
-  while (iter_ < stop_iter) {
-    // zero-init the params
+  while (iter_ < stop_iter) 
+  {
+    // zero-init the params, 清空参数
     net_->ClearParamDiffs();
+	//判断是否需要进行测试
     if (param_.test_interval() && iter_ % param_.test_interval() == 0
         && (iter_ > 0 || param_.test_initialization())) {
       if (Caffe::root_solver()) {
-        TestAll();
+        TestAll(); //
       }
       if (requested_early_exit_) {
         // Break out of the while loop because stop was requested while testing.
@@ -199,6 +202,7 @@ void Solver<Dtype>::Step(int iters) {
       }
     }
 
+	// 调用用户自定义的callback函数（如果有的话）
     for (int i = 0; i < callbacks_.size(); ++i) {
       callbacks_[i]->on_start();
     }
@@ -206,43 +210,62 @@ void Solver<Dtype>::Step(int iters) {
     net_->set_debug_info(display && param_.debug_info());
     // accumulate the loss and gradient
     Dtype loss = 0;
-    for (int i = 0; i < param_.iter_size(); ++i) {
-      loss += net_->ForwardBackward();
+	
+	// accumulate gradients over `iter_size` x `batch_size` instances
+	//iter_size for solver.prototxt
+	//batch_size for train_val.prototxt
+	//param_.iter_size() = iter_size * batch_size;
+    for (int i = 0; i < param_.iter_size(); ++i) 
+	{
+		loss += net_->ForwardBackward(); //进行N次正向+反向
     }
-    loss /= param_.iter_size();
+    loss /= param_.iter_size();			//每一次传播的平均Loss，
     // average the loss across iterations for smoothed reporting
     UpdateSmoothedLoss(loss, start_iter, average_loss);
-    if (display) {
-      float lapse = iteration_timer_.Seconds();
-      float per_s = (iter_ - iterations_last_) / (lapse ? lapse : 1);
-      LOG_IF(INFO, Caffe::root_solver()) << "Iteration " << iter_
-          << " (" << per_s << " iter/s, " << lapse << "s/"
-          << param_.display() << " iters), loss = " << smoothed_loss_;
-      iteration_timer_.Start();
-      iterations_last_ = iter_;
-      const vector<Blob<Dtype>*>& result = net_->output_blobs();
-      int score_index = 0;
-      for (int j = 0; j < result.size(); ++j) {
-        const Dtype* result_vec = result[j]->cpu_data();
-        const string& output_name =
-            net_->blob_names()[net_->output_blob_indices()[j]];
-        const Dtype loss_weight =
-            net_->blob_loss_weights()[net_->output_blob_indices()[j]];
-        for (int k = 0; k < result[j]->count(); ++k) {
-          ostringstream loss_msg_stream;
-          if (loss_weight) {
-            loss_msg_stream << " (* " << loss_weight
-                            << " = " << loss_weight * result_vec[k] << " loss)";
-          }
-          LOG_IF(INFO, Caffe::root_solver()) << "    Train net output #"
-              << score_index++ << ": " << output_name << " = "
-              << result_vec[k] << loss_msg_stream.str();
-        }
-      }
+    if (display)
+	{
+		  float lapse = iteration_timer_.Seconds();							//时间
+		  float per_s = (iter_ - iterations_last_) / (lapse ? lapse : 1);	//每次迭代用的时间
+		  //打印时间及总loss
+		  //Iteration 9900 (4.34211 iter/s, 23.0303s/100 iters), loss = 1.58685e-05 
+		  LOG_IF(INFO, Caffe::root_solver()) << "Iteration " << iter_
+			  << " (" << per_s << " iter/s, " << lapse << "s/"
+			  << param_.display() << " iters), loss = " << smoothed_loss_;
+		  
+		  iteration_timer_.Start();		// 清零时间计数
+		  iterations_last_ = iter_;		// 迭代计数
+
+		  const vector<Blob<Dtype>*>& result = net_->output_blobs(); //网络的输出向量
+		  int score_index = 0;
+		  for (int j = 0; j < result.size(); ++j) 
+		  {
+				const Dtype* result_vec = result[j]->cpu_data(); // 第j个输出向量的头部指针
+				const string& output_name = net_->blob_names()[net_->output_blob_indices()[j]];	//名称
+				const Dtype loss_weight = net_->blob_loss_weights()[net_->output_blob_indices()[j]];	//权重 
+				for (int k = 0; k < result[j]->count(); ++k) 
+				{
+				  ostringstream loss_msg_stream;
+				  if (loss_weight) //
+				  {
+					loss_msg_stream << " (* " << loss_weight
+									<< " = " << loss_weight * result_vec[k] << " loss)";
+				  }
+				  //这里分别输出各个输出向量的loss:
+				  //Train net output #0: loss = 1.60869e-05 (* 1 = 1.60869e-05 loss)
+				  LOG_IF(INFO, Caffe::root_solver()) << "    Train net output #"
+					  << score_index++ << ": " << output_name << " = "
+					  << result_vec[k] << loss_msg_stream.str();
+				}
+		  }
     }
-    for (int i = 0; i < callbacks_.size(); ++i) {
-      callbacks_[i]->on_gradients_ready();
+
+	//执行用户定义的回调函数
+    for (int i = 0; i < callbacks_.size(); ++i) 
+	{
+		callbacks_[i]->on_gradients_ready();
     }
+
+	// 更新权重(纯虚函数，由各个子类solver实现）
     ApplyUpdate();
 
     // Increment the internal iter_ counter -- its value should always indicate
@@ -267,16 +290,18 @@ void Solver<Dtype>::Step(int iters) {
 }
 
 template <typename Dtype>
-void Solver<Dtype>::Solve(const char* resume_file) {
+void Solver<Dtype>::Solve(const char* resume_file) 
+{
   CHECK(Caffe::root_solver()); //检查是否是root_solver，多GPU模式下，只有root_solver才运行这一部分的代码 
   LOG(INFO) << "Solving " << net_->name();
   LOG(INFO) << "Learning Rate Policy: " << param_.lr_policy();
 
-  // Initialize to false every time we start solving.在每次开始之前，把这个变量置为false
+  // Initialize to false every time we start solving.在每次开始之前，把这个变量置为false（检查是否需要提前 停止，比如按了ctrl+c)
   requested_early_exit_ = false;
 
-  //读取之前的训练状态
-  if (resume_file) {
+  //读取之前的训练状态（snapshot)
+  if (resume_file)
+  {
     LOG(INFO) << "Restoring previous solver status from " << resume_file;
     Restore(resume_file);
   }
@@ -284,14 +309,16 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // For a network that is trained by the solver, no bottom or top vecs
   // should be given, and we will just provide dummy vecs.
   int start_iter = iter_;
-  Step(param_.max_iter() - iter_);//逐步训练
+  Step(param_.max_iter() - iter_);//逐步训练 max_iter - iter_次
   // If we haven't already, save a snapshot after optimization, unless
   // overridden by setting snapshot_after_train := false训练完毕后是否保存 快照
   if (param_.snapshot_after_train()
-      && (!param_.snapshot() || iter_ % param_.snapshot() != 0)) {
+      && (!param_.snapshot() || iter_ % param_.snapshot() != 0)) 
+  {
     Snapshot();
   }
-  if (requested_early_exit_) { //如果是按下了ctrl + c
+  if (requested_early_exit_) 
+  { //如果是按下了ctrl + c
     LOG(INFO) << "Optimization stopped early.";
     return;
   }
@@ -301,7 +328,8 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // training, for the train net we only run a forward pass as we've already
   // updated the parameters "max_iter" times -- this final pass is only done to
   // display the loss, which is computed in the forward pass.
-  if (param_.display() && iter_ % param_.display() == 0) {
+  if (param_.display() && iter_ % param_.display() == 0)
+  {
     int average_loss = this->param_.average_loss();
     Dtype loss;
     net_->Forward(&loss);
@@ -310,7 +338,8 @@ void Solver<Dtype>::Solve(const char* resume_file) {
 
     LOG(INFO) << "Iteration " << iter_ << ", loss = " << smoothed_loss_;
   }
-  if (param_.test_interval() && iter_ % param_.test_interval() == 0) {
+  if (param_.test_interval() && iter_ % param_.test_interval() == 0)
+  {
     TestAll();
   }
   LOG(INFO) << "Optimization Done.";
@@ -326,84 +355,103 @@ void Solver<Dtype>::TestAll() {
 }
 
 template <typename Dtype>
-void Solver<Dtype>::Test(const int test_net_id) {
-  CHECK(Caffe::root_solver());
-  LOG(INFO) << "Iteration " << iter_
-            << ", Testing net (#" << test_net_id << ")";
-  CHECK_NOTNULL(test_nets_[test_net_id].get())->
-      ShareTrainedLayersWith(net_.get());
-  vector<Dtype> test_score;
-  vector<int> test_score_output_id;
-  const shared_ptr<Net<Dtype> >& test_net = test_nets_[test_net_id];
-  Dtype loss = 0;
-  for (int i = 0; i < param_.test_iter(test_net_id); ++i) {
-    SolverAction::Enum request = GetRequestedAction();
-    // Check to see if stoppage of testing/training has been requested.
-    while (request != SolverAction::NONE) {
-        if (SolverAction::SNAPSHOT == request) {
-          Snapshot();
-        } else if (SolverAction::STOP == request) {
-          requested_early_exit_ = true;
-        }
-        request = GetRequestedAction();
-    }
-    if (requested_early_exit_) {
-      // break out of test loop.
-      break;
-    }
+void Solver<Dtype>::Test(const int test_net_id) 
+{
+	  CHECK(Caffe::root_solver());
+	  //Iteration 2000, Testing net (#0)
+	  LOG(INFO) << "Iteration " << iter_
+				<< ", Testing net (#" << test_net_id << ")";
+	  CHECK_NOTNULL(test_nets_[test_net_id].get())->
+		  ShareTrainedLayersWith(net_.get());
 
-    Dtype iter_loss;
-    const vector<Blob<Dtype>*>& result =
-        test_net->Forward(&iter_loss);
-    if (param_.test_compute_loss()) {
-      loss += iter_loss;
-    }
-    if (i == 0) {
-      for (int j = 0; j < result.size(); ++j) {
-        const Dtype* result_vec = result[j]->cpu_data();
-        for (int k = 0; k < result[j]->count(); ++k) {
-          test_score.push_back(result_vec[k]);
-          test_score_output_id.push_back(j);
-        }
-      }
-    } else {
-      int idx = 0;
-      for (int j = 0; j < result.size(); ++j) {
-        const Dtype* result_vec = result[j]->cpu_data();
-        for (int k = 0; k < result[j]->count(); ++k) {
-          test_score[idx++] += result_vec[k];
-        }
-      }
-    }
-  }
-  if (requested_early_exit_) {
-    LOG(INFO)     << "Test interrupted.";
-    return;
-  }
-  if (param_.test_compute_loss()) {
-    loss /= param_.test_iter(test_net_id);
-    LOG(INFO) << "Test loss: " << loss;
-  }
-  for (int i = 0; i < test_score.size(); ++i) {
-    const int output_blob_index =
-        test_net->output_blob_indices()[test_score_output_id[i]];
-    const string& output_name = test_net->blob_names()[output_blob_index];
-    const Dtype loss_weight = test_net->blob_loss_weights()[output_blob_index];
-    ostringstream loss_msg_stream;
-    const Dtype mean_score = test_score[i] / param_.test_iter(test_net_id);
-    if (loss_weight) {
-      loss_msg_stream << " (* " << loss_weight
-                      << " = " << loss_weight * mean_score << " loss)";
-    }
-    LOG(INFO) << "    Test net output #" << i << ": " << output_name << " = "
-              << mean_score << loss_msg_stream.str();
-  }
+	  vector<Dtype> test_score;
+	  vector<int> test_score_output_id;
+	  const shared_ptr<Net<Dtype> >& test_net = test_nets_[test_net_id];
+	  Dtype loss = 0;
+	  for (int i = 0; i < param_.test_iter(test_net_id); ++i) 
+	  {
+			SolverAction::Enum request = GetRequestedAction();
+			// Check to see if stoppage of testing/training has been requested.
+			while (request != SolverAction::NONE) 
+			{
+					if (SolverAction::SNAPSHOT == request) 
+					{
+						Snapshot();
+					} 
+					else if (SolverAction::STOP == request)
+					{
+						requested_early_exit_ = true;
+					}
+					request = GetRequestedAction();
+			}
+			if (requested_early_exit_) {
+				  // break out of test loop.
+				  break;
+			}
+
+			Dtype iter_loss;
+			const vector<Blob<Dtype>*>& result = test_net->Forward(&iter_loss);
+			if (param_.test_compute_loss()) 
+			{
+				loss += iter_loss;
+			}
+			if (i == 0) 
+			{
+				  for (int j = 0; j < result.size(); ++j) 
+				  {
+						const Dtype* result_vec = result[j]->cpu_data();
+						for (int k = 0; k < result[j]->count(); ++k) 
+						{
+							  test_score.push_back(result_vec[k]);
+							  test_score_output_id.push_back(j);
+						}
+				  }
+			} 
+			else 
+			{
+				  int idx = 0;
+				  for (int j = 0; j < result.size(); ++j) 
+				  {
+						const Dtype* result_vec = result[j]->cpu_data();
+						for (int k = 0; k < result[j]->count(); ++k) 
+						{
+							 test_score[idx++] += result_vec[k];
+						}
+				  }
+			}
+	  }
+	  if (requested_early_exit_) {
+			LOG(INFO)     << "Test interrupted.";
+			return;
+	  }
+	  if (param_.test_compute_loss()) {
+		loss /= param_.test_iter(test_net_id);
+		LOG(INFO) << "Test loss: " << loss;
+	  }
+	  //打印 test net 的output:
+	  //Test net output #0: accuracy = 0.999609
+	  //Test net output #1: loss = 0.00103728 (* 1 = 0.00103728 loss)
+	  for (int i = 0; i < test_score.size(); ++i) {
+		const int output_blob_index =
+			test_net->output_blob_indices()[test_score_output_id[i]];
+		const string& output_name = test_net->blob_names()[output_blob_index];
+		const Dtype loss_weight = test_net->blob_loss_weights()[output_blob_index];
+		ostringstream loss_msg_stream;
+		const Dtype mean_score = test_score[i] / param_.test_iter(test_net_id);
+		if (loss_weight) {
+		  loss_msg_stream << " (* " << loss_weight
+						  << " = " << loss_weight * mean_score << " loss)";
+		}
+		LOG(INFO) << "    Test net output #" << i << ": " << output_name << " = "
+				  << mean_score << loss_msg_stream.str();
+	  }
 }
 
 template <typename Dtype>
 void Solver<Dtype>::Snapshot() {
   CHECK(Caffe::root_solver());
   string model_filename;
+  //保存训练模型
   switch (param_.snapshot_format()) {
   case caffe::SolverParameter_SnapshotFormat_BINARYPROTO:
     model_filename = SnapshotToBinaryProto();
@@ -414,7 +462,7 @@ void Solver<Dtype>::Snapshot() {
   default:
     LOG(FATAL) << "Unsupported snapshot format.";
   }
-
+  //保存训练状态
   SnapshotSolverState(model_filename);
 }
 
@@ -444,12 +492,14 @@ string Solver<Dtype>::SnapshotFilename(const string extension) {
 
 template <typename Dtype>
 string Solver<Dtype>::SnapshotToBinaryProto() {
-  string model_filename = SnapshotFilename(".caffemodel");
-  LOG(INFO) << "Snapshotting to binary proto file " << model_filename;
-  NetParameter net_param;
-  net_->ToProto(&net_param, param_.snapshot_diff());	//把当前的网络各层及参数 ，写入到net_param里面
-  WriteProtoToBinaryFile(net_param, model_filename);
-  return model_filename;
+	  string model_filename = SnapshotFilename(".caffemodel"); //组合文件名
+	  LOG(INFO) << "Snapshotting to binary proto file " << model_filename;
+	  NetParameter net_param;
+
+	  net_->ToProto(&net_param, param_.snapshot_diff());	//把当前的网络各层及参数 ，写入到net_param里面
+
+	  WriteProtoToBinaryFile(net_param, model_filename);
+	  return model_filename;
 }
 
 template <typename Dtype>
@@ -472,16 +522,22 @@ void Solver<Dtype>::Restore(const char* state_file) {
 }
 
 template <typename Dtype>
-void Solver<Dtype>::UpdateSmoothedLoss(Dtype loss, int start_iter,
-    int average_loss) {
-  if (losses_.size() < average_loss) {
+void Solver<Dtype>::UpdateSmoothedLoss(Dtype loss, int start_iter, int average_loss) 
+{
+	//averate_loss一般默认是1，那么Losses_长度是0
+  if (losses_.size() < average_loss) 
+  {
     losses_.push_back(loss);
     int size = losses_.size();
     smoothed_loss_ = (smoothed_loss_ * (size - 1) + loss) / size;
-  } else {
+  } 
+  else 
+  {
     int idx = (iter_ - start_iter) % average_loss;
     smoothed_loss_ += (loss - losses_[idx]) / average_loss;
-    losses_[idx] = loss;
+    losses_[idx] = loss;		
+	//losses_保存当前batch的平均loss
+	//smoothed_loss_保存当前loss与上一次loss的差值的累加和
   }
 }
 

@@ -186,8 +186,10 @@ int train() {
   vector<string> stages = get_stages_from_flags();
 
   caffe::SolverParameter solver_param;
+  //从文件中读取solver参数
   caffe::ReadSolverParamsFromTextFileOrDie(FLAGS_solver, &solver_param);
 
+  // 设置netstate的level和stage(这俩货不知道有什么用，好像跟是否启用某一个layer有关）
   solver_param.mutable_train_state()->set_level(FLAGS_level);
   for (int i = 0; i < stages.size(); i++) {
     solver_param.mutable_train_state()->add_stage(stages[i]);
@@ -195,17 +197,19 @@ int train() {
 
   // If the gpus flag is not provided, allow the mode and device to be set
   // in the solver prototxt.
+  //如果命令行中没 有指定GPU，就使用solver.prototxt里面的设定）
   if (FLAGS_gpu.size() == 0
       && solver_param.has_solver_mode()
       && solver_param.solver_mode() == caffe::SolverParameter_SolverMode_GPU) {
-      if (solver_param.has_device_id()) {
+      if (solver_param.has_device_id()) {	//如果solver.prototxt里面指定了gpu idx，就使用指定的GPU
           FLAGS_gpu = "" +
               boost::lexical_cast<string>(solver_param.device_id());
-      } else {  // Set default GPU if unspecified
+      } else {  // Set default GPU if unspecified： 默认是：GPU: 0
           FLAGS_gpu = "" + boost::lexical_cast<string>(0);
       }
   }
 
+  //获取GPU个数
   vector<int> gpus;
   get_gpus(&gpus);
   if (gpus.size() == 0) {
@@ -230,31 +234,39 @@ int train() {
     Caffe::set_solver_count(gpus.size());
   }
 
+  //注册一个ctrl+c信号和终端关闭信号
   caffe::SignalHandler signal_handler(
         GetRequestedAction(FLAGS_sigint_effect),
         GetRequestedAction(FLAGS_sighup_effect));
-
+  // 创建一个solver,solver的类型（如sgd）由solver_param里面指定。
   shared_ptr<caffe::Solver<float> >
       solver(caffe::SolverRegistry<float>::CreateSolver(solver_param));
-
+  // 两个信号的处理函数注册到solver里面
   solver->SetActionFunction(signal_handler.GetActionFunction());
 
-  if (FLAGS_snapshot.size()) {
+  
+  if (FLAGS_snapshot.size()) 
+  {//是否从snapshot恢复训练，拷贝weights和训练中的参数如iter，learn rate等
     LOG(INFO) << "Resuming from " << FLAGS_snapshot;
     solver->Restore(FLAGS_snapshot.c_str());
-  } else if (FLAGS_weights.size()) {
+  } 
+  else if (FLAGS_weights.size())
+  { //拷贝weights，只有layer name同名的才会拷贝，且该Layer必须具有相同的shape
     CopyLayers(solver.get(), FLAGS_weights);
   }
 
   LOG(INFO) << "Starting Optimization";
-  if (gpus.size() > 1) {
-#ifdef USE_NCCL
+  if (gpus.size() > 1) 
+  {
+#ifdef USE_NCCL		//只有在NCCL支持的情况下，才可以启用多GPU同时优化
     caffe::NCCL<float> nccl(solver);
     nccl.Run(gpus, FLAGS_snapshot.size() > 0 ? FLAGS_snapshot.c_str() : NULL);
 #else
     LOG(FATAL) << "Multi-GPU execution not available - rebuild with USE_NCCL";
 #endif
-  } else {
+  } 
+  else 
+  {	//开始优化
     solver->Solve();
   }
   LOG(INFO) << "Optimization Done.";

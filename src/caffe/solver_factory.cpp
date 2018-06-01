@@ -24,8 +24,8 @@ void SolverRegistry<Dtype>::AddCreator(const string& type, Creator creator) {
 template <typename Dtype>
 Solver<Dtype>* SolverRegistry<Dtype>::CreateSolver(
     const SolverParameter& param) {
-  const string& type = param.type();
-  CreatorRegistry& registry = Registry();
+  const string& type = param.type();			//solver的类型，如SGD
+  CreatorRegistry& registry = Registry();		//根据solver类型，查找solver的实现
   CHECK_EQ(registry.count(type), 1)
       << "Unknown solver type: " << type
       << " (known types: " << SolverTypeListString() << ")";
