@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
 	const string encode_type = FLAGS_encode_type;
 
 	std::ifstream infile(argv[2]);
-	std::vector<std::pair<std::string, std::vector<float>> > lines;
+	std::vector<std::pair<std::string, std::vector<float> > > lines;
 	std::string filename;
 
 	std::string label_count_string = argv[5];
