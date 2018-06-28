@@ -439,8 +439,10 @@ int time() {
 }
 RegisterBrewFunction(time);
 
+#ifdef _MSC_VER
 #include <io.h>
 #include <direct.h>
+#endif
 int main(int argc, char** argv) {
   // Print output to stderr (while still logging).
   FLAGS_alsologtostderr = 1;
@@ -460,9 +462,9 @@ int main(int argc, char** argv) {
 #ifdef WITH_PYTHON_LAYER
     try {
 #endif
-		_chdir(R"(E:\yingjun.wang\mnist\model\)");
-		char cwd[4096] = { 0 };
-		getcwd(cwd, 4096);
+		// _chdir(R"(E:\yingjun.wang\mnist\model\)");
+		// char cwd[4096] = { 0 };
+		// getcwd(cwd, 4096);
       return GetBrewFunction(caffe::string(argv[1]))();
 #ifdef WITH_PYTHON_LAYER
     } catch (bp::error_already_set) {
