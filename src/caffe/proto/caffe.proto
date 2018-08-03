@@ -408,6 +408,9 @@ message LayerParameter {
   optional NormalizeParameter norm_param = 200;
   optional FocalLossParameter focal_loss_param = 201;
   optional SwishParameter swish_param = 202;
+  optional Axpy_Parameter axu_param = 203;
+  optional TripletLossParameter triplet_loss_param = 204;
+  optional NormalizationParameter normalization_param = 205;
 }
 
 // Message that stores parameters used to apply transformation
@@ -1448,5 +1451,26 @@ message SwishParameter {
   // Prajit Ramachandran, Barret Zoph, Quoc V. Le. (2017). Searching for
   // Activation Functions. https://arxiv.org/abs/1710.05941v2
   optional float beta = 1 [default = 1];
+}
+
+message NormalizationParameter{
+  //margin for dissimilar pair
+  enum Norm{
+    L1=1;
+    L2=2;
+  }
+  optional Norm norm = 1 [default = L2];
+}
+
+message Axpy_Parameter{
+  //margin for dissimilar pair
+  optional float diff_ = 1 [default = 1.0];
+}
+
+message TripletLossParameter{
+  //margin for dissimilar pair 
+  optional int32 group_size = 1 [default = 4];
+  optional float margin = 2 [default = 1.0];
+  optional float scale = 3 [default = 1];
 }
 
