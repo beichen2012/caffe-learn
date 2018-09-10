@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 2.8.7)
+#list(APPEND CMAKE_PREFIX_PATH "/homec/wyj/github/opencv-3.4.1/build/install")
 if(MSVC)
   # CMake 3.4 introduced a WINDOWS_EXPORT_ALL_SYMBOLS target property that makes it possible to
   # build shared libraries without using the usual declspec() decoration.

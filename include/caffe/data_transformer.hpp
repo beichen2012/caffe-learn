@@ -89,7 +89,23 @@ class DataTransformer {
    *    This is destination blob, it will contain as many images as the
    *    input blob. It can be part of top blob's data.
    */
+
   void Transform(Blob<Dtype>* input_blob, Blob<Dtype>* transformed_blob);
+    /**
+   * @brief Applies the transformation defined in the data layer's
+   * transform_param block to a cv::Mat
+   *
+   * @param cv_img
+   *    cv::Mat containing the data to be transformed.
+   * @param transformed_blob
+   *    This is destination blob. It can be part of top blob's data if
+   *    set_cpu_data() is used. See image_data_layer.cpp for an example.
+   * @param preserve_pixel_vals
+   *    Use with dense label images to preserve the input pixel values
+   *    which would be labels (and thus cannot be interpolated or scaled).
+   */
+  void Transform(const cv::Mat& cv_img, Blob<Dtype>* transformed_blob,
+                 bool preserve_pixel_vals);
 
   /**
    * @brief Infers the shape of transformed_blob will have when
