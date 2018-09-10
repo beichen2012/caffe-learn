@@ -352,41 +352,41 @@ class Layer {
    */
   virtual void CheckBlobCounts(const vector<Blob<Dtype>*>& bottom,
                                const vector<Blob<Dtype>*>& top) {
-    if (ExactNumBottomBlobs() >= 0) {
-      CHECK_EQ(ExactNumBottomBlobs(), bottom.size())
-          << type() << " Layer takes " << ExactNumBottomBlobs()
-          << " bottom blob(s) as input.";
-    }
-    if (MinBottomBlobs() >= 0) {
-      CHECK_LE(MinBottomBlobs(), bottom.size())
-          << type() << " Layer takes at least " << MinBottomBlobs()
-          << " bottom blob(s) as input.";
-    }
-    if (MaxBottomBlobs() >= 0) {
-      CHECK_GE(MaxBottomBlobs(), bottom.size())
-          << type() << " Layer takes at most " << MaxBottomBlobs()
-          << " bottom blob(s) as input.";
-    }
-    if (ExactNumTopBlobs() >= 0) {
-      CHECK_EQ(ExactNumTopBlobs(), top.size())
-          << type() << " Layer produces " << ExactNumTopBlobs()
-          << " top blob(s) as output.";
-    }
-    if (MinTopBlobs() >= 0) {
-      CHECK_LE(MinTopBlobs(), top.size())
-          << type() << " Layer produces at least " << MinTopBlobs()
-          << " top blob(s) as output.";
-    }
-    if (MaxTopBlobs() >= 0) {
-      CHECK_GE(MaxTopBlobs(), top.size())
-          << type() << " Layer produces at most " << MaxTopBlobs()
-          << " top blob(s) as output.";
-    }
-    if (EqualNumBottomTopBlobs()) {
-      CHECK_EQ(bottom.size(), top.size())
-          << type() << " Layer produces one top blob as output for each "
-          << "bottom blob input.";
-    }
+    // if (ExactNumBottomBlobs() >= 0) {
+    //   CHECK_EQ(ExactNumBottomBlobs(), bottom.size())
+    //       << type() << " Layer takes " << ExactNumBottomBlobs()
+    //       << " bottom blob(s) as input.";
+    // }
+    // if (MinBottomBlobs() >= 0) {
+    //   CHECK_LE(MinBottomBlobs(), bottom.size())
+    //       << type() << " Layer takes at least " << MinBottomBlobs()
+    //       << " bottom blob(s) as input.";
+    // }
+    // if (MaxBottomBlobs() >= 0) {
+    //   CHECK_GE(MaxBottomBlobs(), bottom.size())
+    //       << type() << " Layer takes at most " << MaxBottomBlobs()
+    //       << " bottom blob(s) as input.";
+    // }
+    // if (ExactNumTopBlobs() >= 0) {
+    //   CHECK_EQ(ExactNumTopBlobs(), top.size())
+    //       << type() << " Layer produces " << ExactNumTopBlobs()
+    //       << " top blob(s) as output.";
+    // }
+    // if (MinTopBlobs() >= 0) {
+    //   CHECK_LE(MinTopBlobs(), top.size())
+    //       << type() << " Layer produces at least " << MinTopBlobs()
+    //       << " top blob(s) as output.";
+    // }
+    // if (MaxTopBlobs() >= 0) {
+    //   CHECK_GE(MaxTopBlobs(), top.size())
+    //       << type() << " Layer produces at most " << MaxTopBlobs()
+    //       << " top blob(s) as output.";
+    // }
+    // if (EqualNumBottomTopBlobs()) {
+    //   CHECK_EQ(bottom.size(), top.size())
+    //       << type() << " Layer produces one top blob as output for each "
+    //       << "bottom blob input.";
+    // }
   }
 
   /**

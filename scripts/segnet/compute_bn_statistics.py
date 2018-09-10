@@ -7,7 +7,11 @@ from argparse import ArgumentParser
 
 
 
-caffe_root = '/SegNet/caffe-segnet/' 			# Change this to the absolute directory to SegNet Caffe
+# caffe_root = '/SegNet/caffe-segnet/' 			# Change this to the absolute directory to SegNet Caffe
+caffe_root = '/homec/wyj/github/caffe-learn/build/install/'
+# iamge width and height
+image_width = 800
+image_height = 608
 import sys
 sys.path.insert(0, caffe_root + 'python')
 
@@ -181,17 +185,18 @@ if __name__ == '__main__':
     train_size = len(train_ims)
     minibatch_size = testable_msg.layer[0].dense_image_data_param.batch_size
     num_iterations = train_size // minibatch_size + train_size % minibatch_size
-    in_h, in_w =(360, 480)
+    # in_h, in_w =(360, 480)
+    in_h, in_w = (image_height, image_width)
     test_net, test_msg = make_test_files(BN_calc_path, args.weights, num_iterations,
                                          in_h, in_w)
     
     # save deploy prototxt
-    #print "Saving deployment prototext file..."
-    #test_path = os.path.join(args.out_dir, "deploy.prototxt")
-    #with open(test_path, 'w') as f:
-    #    f.write(text_format.MessageToString(test_msg))
+    print "Saving deployment prototext file..."
+    test_path = os.path.join(args.out_dir, "deploy.prototxt")
+    with open(test_path, 'w') as f:
+       f.write(text_format.MessageToString(test_msg))
     
     print "Saving test net weights..."
-    test_net.save(os.path.join(args.out_dir, "test_weights.caffemodel"))
+    test_net.save(os.path.join(args.out_dir, "deploy.caffemodel"))
     print "done"
 
