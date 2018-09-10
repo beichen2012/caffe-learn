@@ -412,6 +412,8 @@ message LayerParameter {
   optional TripletLossParameter triplet_loss_param = 204;
   optional NormalizationParameter normalization_param = 205;
   optional DenseImageDataParameter dense_image_data_param = 206;
+  optional BNParameter bn_param = 207;
+  optional UpsampleParameter upsample_param = 208;
 }
 
 // Message that stores parameters used to apply transformation
@@ -1498,4 +1500,36 @@ message DenseImageDataParameter {
   optional bool mirror = 10 [default = false];
   optional uint32 crop_width = 11 [default = 0];
   optional uint32 crop_height = 12 [default = 0];
+}
+
+// Message that stores parameters used by BN (Batch Normalization)  layer
+message BNParameter {
+  enum BNMode {
+    LEARN = 0;
+    INFERENCE = 1;
+  }
+  optional BNMode bn_mode = 3 [default = LEARN];
+  optional FillerParameter scale_filler = 1;  // The filler for the scale
+  optional FillerParameter shift_filler = 2;  // The filler for the shift
+}
+
+
+message UpsampleParameter {
+  // DEPRECATED. No need to specify upsampling scale factors when
+  // exact output shape is given by upsample_h, upsample_w parameters.
+  optional uint32 scale = 1 [default = 2];
+  // DEPRECATED. No need to specify upsampling scale factors when
+  // exact output shape is given by upsample_h, upsample_w parameters.
+  optional uint32 scale_h = 2;
+  // DEPRECATED. No need to specify upsampling scale factors when
+  // exact output shape is given by upsample_h, upsample_w parameters.
+  optional uint32 scale_w = 3;
+  // DEPRECATED. Specify exact output height using upsample_h. This
+  // parameter only works when scale is 2
+  optional bool pad_out_h = 4 [default = false];
+  // DEPRECATED. Specify exact output width using upsample_w. This
+  // parameter only works when scale is 2
+  optional bool pad_out_w = 5 [default = false];
+  optional uint32 upsample_h = 6;
+  optional uint32 upsample_w = 7;
 }
